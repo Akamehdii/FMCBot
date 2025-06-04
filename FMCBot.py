@@ -1,9 +1,29 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler, filters
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # بخش راه‌اندازی ربات
+    await application.bot.set_webhook(url=WEBHOOK_URL)
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling()
+    print("Bot started via webhook.")
+    
+    yield  # اینجا برنامه اجرا میشه
+    
+    # بخش خاموش شدن ربات
+    await application.updater.stop()
+    await application.stop()
+    await application.shutdown()
+    print("Bot shutdown complete.")
+
+app = FastAPI(lifespan=lifespan)
+
 import os
 
-app = FastAPI()
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 PORT = int(os.environ.get("PORT", 8443))
