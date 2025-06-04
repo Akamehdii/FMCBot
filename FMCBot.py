@@ -7,7 +7,7 @@ import os
 
 TOKEN = os.environ.get("8094127608:AAGFgmkAeAFCKkfPknkHlVxlgjni3tCXSHQ")
 PORT = int(os.environ.get("PORT", 8443))
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+WEBHOOK_URL = os.environ.get("https://fmcbot.onrender.com/8094127608:AAGFgmkAeAFCKkfPknkHlVxlgjni3tCXSHQ")
 
 # گوگل شیت
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
