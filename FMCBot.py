@@ -1,118 +1,89 @@
 import os
 import logging
+from datetime import datetime
+
+from fastapi import FastAPI, Request
 import telegram
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import (
-    Application,
-    CallbackQueryHandler,
-    CommandHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-    ConversationHandler,
-)
-import datetime
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# فعال‌سازی لاگ‌ها
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
-
-# توکن از محیط
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
+# ============ تنظیمات ============
+TOKEN = os.environ.get("BOT_TOKEN")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
-PORT = int(os.environ.get("PORT", 10000))
+PORT = int(os.environ.get("PORT", 8443))
 
-bot = telegram.Bot(token=BOT_TOKEN)
-
-# اتصال به Google Sheets
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("google-credentials.json", scope)
-client = gspread.authorize(creds)
+# ============ Google Sheet ============
+scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+credentials = ServiceAccountCredentials.from_json_keyfile_name('google-credentials.json', scope)
+client = gspread.authorize(credentials)
 sheet = client.open("FMCBot").sheet1
 
-# مراحل گفتگو
-(
-    ASK_NAME,
-    ASK_PHONE,
-    ASK_STUDENT_ID,
-    CHOOSE_INSTRUMENT,
-    CONFIRM,
-) = range(5)
+# ============ FastAPI و Telegram ============
+app = FastAPI()
+bot = telegram.Bot(token=TOKEN)
 
+application = Application.builder().token(TOKEN).build()
+
+# ============ لیست سازها ============
+instruments = ["🎹 پیانو", "🎸 گیتار", "🎻 ویولن", "🥁 درام", "🎤 آواز"]
+
+# ============ توابع ربات ============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("سلام! برای ثبت‌نام لطفاً نام و نام خانوادگی خود را وارد کنید.")
-    return ASK_NAME
-
-async def ask_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["name"] = update.message.text.strip()
-    await update.message.reply_text("شماره تلفن همراه خود را وارد کنید:")
-    return ASK_PHONE
-
-async def ask_student_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["phone"] = update.message.text.strip()
-    await update.message.reply_text("شماره دانشجویی خود را وارد کنید:")
-    return ASK_STUDENT_ID
-
-async def choose_instrument(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["student_id"] = update.message.text.strip()
-    keyboard = [
-        [InlineKeyboardButton("پیانو", callback_data="پیانو")],
-        [InlineKeyboardButton("گیتار", callback_data="گیتار")],
-        [InlineKeyboardButton("ویولن", callback_data="ویولن")],
-        [InlineKeyboardButton("تار", callback_data="تار")],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("لطفاً ساز موردنظر خود را انتخاب کنید:", reply_markup=reply_markup)
-    return CHOOSE_INSTRUMENT
-
-async def save_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    instrument = query.data
-    user_data = context.user_data
-    user_data["instrument"] = instrument
-
-    # ذخیره در Google Sheet
-    sheet.append_row([
-        datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        user_data["name"],
-        user_data["phone"],
-        user_data["student_id"],
-        query.from_user.username or "",
-        instrument
-    ])
-
-    await query.edit_message_text("✅ ثبت‌نام شما با موفقیت انجام شد. ممنون!")
-
-    return ConversationHandler.END
-
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("❌ عملیات ثبت‌نام لغو شد.")
-    return ConversationHandler.END
-
-# ساخت اپلیکیشن
-application = Application.builder().token(BOT_TOKEN).build()
-
-# تعریف گفتگو
-conv_handler = ConversationHandler(
-    entry_points=[CommandHandler("start", start)],
-    states={
-        ASK_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_phone)],
-        ASK_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_student_id)],
-        ASK_STUDENT_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, choose_instrument)],
-        CHOOSE_INSTRUMENT: [CallbackQueryHandler(save_data)],
-    },
-    fallbacks=[CommandHandler("cancel", cancel)],
-)
-
-application.add_handler(conv_handler)
-
-# راه‌اندازی Webhook
-if __name__ == "__main__":
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        url_path=BOT_TOKEN,
-        webhook_url=WEBHOOK_URL,
+    keyboard = [[KeyboardButton(text=inst)] for inst in instruments]
+    await update.message.reply_text(
+        "سلام! برای ثبت‌نام، لطفاً ساز مورد علاقه‌ات رو انتخاب کن:",
+        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    if text in instruments:
+        context.user_data["instrument"] = text
+        await update.message.reply_text("لطفاً نام و نام خانوادگی‌ات را وارد کن:")
+    elif "instrument" in context.user_data and "name" not in context.user_data:
+        context.user_data["name"] = text
+        await update.message.reply_text("شماره تلفن همراه را وارد کن:")
+    elif "name" in context.user_data and "phone" not in context.user_data:
+        context.user_data["phone"] = text
+        await update.message.reply_text("شماره دانشجویی را وارد کن:")
+    elif "phone" in context.user_data and "student_id" not in context.user_data:
+        context.user_data["student_id"] = text
+
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        telegram_id = update.message.from_user.id
+        username = update.message.from_user.username or ""
+
+        row = [
+            now,
+            context.user_data["name"],
+            context.user_data["phone"],
+            context.user_data["student_id"],
+            f"@{username}" if username else telegram_id,
+            context.user_data["instrument"]
+        ]
+        sheet.append_row(row)
+        await update.message.reply_text("ثبت‌نام با موفقیت انجام شد ✅")
+
+# ============ ثبت هندلرها ============
+application.add_handler(CommandHandler("start", start))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+# ============ FastAPI Routes ============
+@app.post(f"/{TOKEN}")
+async def telegram_webhook(req: Request):
+    data = await req.json()
+    update = Update.de_json(data, bot)
+    await application.process_update(update)
+    return {"ok": True}
+
+@app.get("/ping")
+async def ping():
+    return {"status": "FMCBot is alive"}
+
+# ============ راه‌اندازی Webhook ============
+@app.on_event("startup")
+async def on_startup():
+    await application.bot.set_webhook(f"{WEBHOOK_URL}/{TOKEN}")
