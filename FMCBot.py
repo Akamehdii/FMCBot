@@ -23,15 +23,29 @@ SHEET_LINK = "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit?usp=shar
 CLASS_LINKS = {
     "class_piano": "https://t.me/joinchat/YOUR_PIANO_LINK",
     "class_guitar": "https://t.me/joinchat/YOUR_GUITAR_LINK",
-    # ... بقیه کلاس‌ها
+    "class_violin": "https://t.me/joinchat/YOUR_VIOLIN_LINK",
+    "class_tonbak": "https://t.me/joinchat/YOUR_TONBAK_LINK",
+    "class_solfege1": "https://t.me/joinchat/YOUR_SOLFEGE1_LINK",
+    "class_solfege2": "https://t.me/joinchat/YOUR_SOLFEGE2_LINK",
+    "class_vocal": "https://t.me/joinchat/YOUR_VOCAL_LINK",
+    "class_dotar": "https://t.me/joinchat/YOUR_DOTAR_LINK",
+    "class_setar": "https://t.me/joinchat/YOUR_SETAR_LINK",
+    "class_santoor": "https://t.me/joinchat/YOUR_SANTOOR_LINK",
 }
 
 # آیدی‌های پشتیبانی
 SUPPORT_IDS = {
     "piano_sup": ("سرپرست پیانو", "@piano_admin_id"),
     "guitar_sup": ("سرپرست گیتار", "@guitar_admin_id"),
+    "violin_sup": ("سرپرست کمانچه و ویولن", "@violin_admin_id"),
+    "tonbak_sup": ("سرپرست دف و تنبک", "@tonbak_admin_id"),
+    "solfege1_sup": ("سرپرست سلفژ مقدماتی", "@solfege1_admin_id"),
+    "solfege2_sup": ("سرپرست سلفژ پیشرفته", "@solfege2_admin_id"),
+    "vocal_sup": ("سرپرست آواز", "@vocal_admin_id"),
+    "dotar_sup": ("سرپرست دوتار", "@dotar_admin_id"),
+    "setar_sup": ("سرپرست تار و سه‌تار", "@setar_admin_id"),
+    "santoor_sup": ("سرپرست سنتور", "@santoor_admin_id"),
     "deputy_sup": ("دبیر کانون", "@deputy_admin_id"),
-    # ... بقیه سرپرست‌ها
 }
 
 # --- ساخت برنامه اصلی ربات ---
@@ -88,15 +102,25 @@ payment_text = (
 menu_buttons = [
     [InlineKeyboardButton("🎼 ثبت نام کارگاه های موسیقی", callback_data="register")],
     [InlineKeyboardButton("🎹 رزرو تمرین ساز", callback_data="reserve")],
-    [InlineKeyboardButton("📖 نشریه ارغنون", callback_data="journal")],
+    # --- این خط اصلاح شد ---
+    [InlineKeyboardButton("📖 نشریه ارغنون", url="https://t.me/Ferdowsi_Music_Club/2154")],
     [InlineKeyboardButton("📋 لیست کلاس‌ها و وضعیت", callback_data="class_list")],
     [InlineKeyboardButton("❔ سوالات متداول", callback_data="faq")],
     [InlineKeyboardButton("🛠️ پشتیبانی", callback_data="support")],
 ]
+
+# --- دکمه‌های کلاس‌ها برای ثبت‌نام (اصلاح شده) ---
 register_buttons = [
     [InlineKeyboardButton("پیانو", callback_data="class_piano")],
     [InlineKeyboardButton("گیتار", callback_data="class_guitar")],
-    # ... بقیه دکمه‌های کلاس‌ها
+    [InlineKeyboardButton("کمانچه و ویولن", callback_data="class_violin")],
+    [InlineKeyboardButton("دف و تنبک", callback_data="class_tonbak")],
+    [InlineKeyboardButton("سلفژ مقدماتی", callback_data="class_solfege1")],
+    [InlineKeyboardButton("سلفژ پیشرفته", callback_data="class_solfege2")],
+    [InlineKeyboardButton("آواز", callback_data="class_vocal")],
+    [InlineKeyboardButton("دوتار", callback_data="class_dotar")],
+    [InlineKeyboardButton("تار و سه‌تار", callback_data="class_setar")],
+    [InlineKeyboardButton("سنتور", callback_data="class_santoor")],
 ]
 
 # --- توابع اصلی ربات ---
@@ -177,6 +201,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton("ورود به گروه رزرو تمرین 🎹", url="https://t.me/+R-b_fZzBVJs5OGQ0")]
             ])
         )
+    # --- این بخش حذف شد چون دیگر لازم نیست ---
+    # elif data == "journal":
+    #     ...
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = context.user_data
@@ -199,7 +226,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             await update.message.reply_text("شماره تلفن همراه خود را وارد کنید یا دکمه زیر را بزنید:", reply_markup=contact_btn)
         else:
-            await update.message.reply_text("شماره دانشجویی باید فقط شامل عدد باشد. لطفا مجددا وارد کنید.")
+            await update.message.reply_text("شماره دانشجویی مورد قبول نیصت. لطفا مجددا وارد کنید.")
     elif step == "phone":
         user_data["phone"] = text
         user_data["step"] = "student_card"
@@ -219,7 +246,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(payment_text)
     elif step == "payment":
         payment_receipt_id = update.message.photo[-1].file_id
-        await update.message.reply_text("""✅ ثبت‌نام شما با موفقیت انجام شد. اطلاعات شما برای بررسی به شورای کانون ارسال گردید. متشکرم!""", reply_markup=main_reply_keyboard)
+        await update.message.reply_text("""✅ ثبت‌نام اولیه شما با موفقیت انجام شد. اطلاعات شما برای بررسی به شورای کانون ارسال گردید. متشکرم!""", reply_markup=main_reply_keyboard)
 
         user_info = context.user_data
         user_chat_id = update.message.chat.id
