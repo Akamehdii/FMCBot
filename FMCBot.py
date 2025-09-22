@@ -166,4 +166,54 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif step == "payment":
         payment_receipt_id = update.message.photo[-1].file_id
-        await update.message.reply_text("✅ ثبت‌نام شما با موفقیت انجام شد. اطلاعات شما برای بررسی به شورای
+        # --- این خط اصلاح شد ---
+        await update.message.reply_text("""✅ ثبت‌نام شما با موفقیت انجام شد. اطلاعات شما برای بررسی به شورای کانون ارسال گردید. متشکرم!""")
+
+        # --- ارسال اطلاعات به گروه خصوصی ---
+        user_info = context.user_data
+        selected_class_raw = user_info.get("selected_class", "نامشخص")
+        selected_class = selected_class_raw.replace("class_", "").capitalize()
+
+        admin_message = (
+            f"🔔 **ثبت‌نام جدید برای کلاس: {selected_class}**\n\n"
+            f"👤 **نام:** {user_info.get('name', 'N/A')}\n"
+            f"🎓 **شماره دانشجویی:** {user_info.get('student_id', 'N/A')}\n"
+            f"📱 **شماره تماس:** {user_info.get('phone', 'N/A')}"
+        )
+
+        try:
+            # ارسال پیام متنی به گروه
+            await context.bot.send_message(chat_id=GROUP_CHAT_ID, text=admin_message, parse_mode='Markdown')
+            # ارسال عکس کارت دانشجویی به گروه
+            await context.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=user_info.get("student_card_id"), caption="کارت دانشجویی")
+            # ارسال عکس فیش واریزی به گروه
+            await context.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=payment_receipt_id, caption="فیش واریزی")
+        except Exception as e:
+            print(f"Error sending to group: {e}")
+
+        context.user_data.clear()
+        await start(update, context)
+
+# -- ثبت هندلرها --
+application.add_handler(CommandHandler("start", start))
+application.add_handler(CommandHandler("cancel", cancel))
+application.add_handler(CallbackQueryHandler(handle_callback))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+application.add_handler(MessageHandler(filters.CONTACT, handle_contact))
+application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+
+# -- FastAPI با Lifespan (اصلاح شده برای Render) --
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await application.bot.set_webhook(url=WEBHOOK_URL)
+    await application.initialize()
+    await application.start()
+    yield
+    await application.stop()
+    await application.shutdown()
+
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/")
+async def root():
+    return {"status": "FMCBot is running."}
