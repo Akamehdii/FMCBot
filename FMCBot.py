@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from contextlib import asynccontextmanager
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import (
@@ -8,21 +8,20 @@ from telegram.ext import (
 )
 
 # --- متغیرهای محیطی ---
-# کد به سرور Render می‌گوید که متغیرهایی با این نام‌ها را بخواند
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 
-# شناسه عددی گروه که شما وارد کردید
+# شناسه عددی گروه
 GROUP_CHAT_ID = -4881825561
 
 application = ApplicationBuilder().token(BOT_TOKEN).build()
 
 # -- پیام‌ها --
+# ... (تمام پیام‌های شما مثل welcome_text و ... در اینجا بدون تغییر قرار می‌گیرند) ...
 welcome_text = (
     "سلام! به ربات کانون موسیقی خوش آمدید 🎶\n"
     "از طریق دکمه‌های زیر می‌تونید به بخش‌های مختلف دسترسی داشته باشید."
 )
-
 rules_text = (
     "⚠️ضوابط و قوانین شرکت در کلاس:\n\n"
     "هنرجویان عزیز لطفا در مطالعه دقیق و رعایت موارد زیر کوشا باشید\n\n"
@@ -36,7 +35,6 @@ rules_text = (
     "🔴تصویب زمان کلاس تنها پس از واریز وجه انجام میشود\n\n"
     "🔶انجام مراحل بعدی ثبت‌نام به معنای پذیرفتن تمام شرایط ذکر شده است."
 )
-
 fee_text = (
     "🔴 مبلغ شهریه\n\n"
     "(ساز و آواز: ۸ جلسه انفرادی - یک روز در هفته - نیم ساعت)\n"
@@ -48,14 +46,15 @@ fee_text = (
     "۱۲۰۰ هزار تومان برای سازها و آواز\n"
     "۹۵۰ هزار تومان برای سلفژ"
 )
-
 payment_text = (
     "🔺 لطفا مبلغ شهریه خود را تا پیش از آغاز کارگاه به شماره حساب زیر واریز نمایید و تصویر فیش واریزی را ارسال کنید.\n\n"
     "💳 6219 8619 0605 4340\n"
     "آیدین خلقی"
 )
 
+
 # -- دکمه‌ها --
+# ... (تمام دکمه‌های شما مثل menu_buttons و ... در اینجا بدون تغییر قرار می‌گیرند) ...
 menu_buttons = [
     [InlineKeyboardButton("🎼 ثبت نام کارگاه های موسیقی", callback_data="register")],
     [InlineKeyboardButton("🎹 رزرو تمرین ساز", callback_data="reserve")],
@@ -63,7 +62,6 @@ menu_buttons = [
     [InlineKeyboardButton("📖 نشریه ارغنون", callback_data="journal")],
     [InlineKeyboardButton("🛠️ پشتیبانی", callback_data="support")],
 ]
-
 register_buttons = [
     [InlineKeyboardButton("پیانو", callback_data="class_piano")],
     [InlineKeyboardButton("گیتار", callback_data="class_guitar")],
@@ -76,22 +74,19 @@ register_buttons = [
     [InlineKeyboardButton("تار و سه‌تار", callback_data="class_setar")],
     [InlineKeyboardButton("سنتور", callback_data="class_santoor")],
 ]
-
 support_buttons = [
     [InlineKeyboardButton("سرپرست پیانو", callback_data="sup_piano")],
     [InlineKeyboardButton("سرپرست گیتار", callback_data="sup_guitar")],
-    # ... (بقیه دکمه‌های پشتیبانی)
 ]
 
 # -- متدهای هندل --
+# ... (تمام توابع شما مثل start, cancel و ... در اینجا بدون تغییر قرار می‌گیرند) ...
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(welcome_text, reply_markup=InlineKeyboardMarkup(menu_buttons))
-
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text("فرآیند ثبت‌نام لغو شد.", reply_markup=ReplyKeyboardRemove())
     await start(update, context)
-
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
@@ -112,7 +107,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "accept_fee":
         await query.edit_message_text("لطفا نام و نام خانوادگی خود را به فارسی وارد کنید:\n\nبرای لغو می‌توانید از دستور /cancel استفاده کنید.")
         context.user_data["step"] = "name"
-    # ... (بقیه callback handler ها) ...
     elif data == "reserve":
         await query.edit_message_text(
             "برای رزرو تمرین ساز به گروه زیر مراجعه کنید:",
@@ -120,8 +114,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton("ورود به گروه رزرو تمرین 🎹", url="https://t.me/+R-b_fZzBVJs5OGQ0")]
             ])
         )
-
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = context.user_data
     step = user_data.get("step")
@@ -149,13 +141,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_data["phone"] = text
         user_data["step"] = "student_card"
         await update.message.reply_text("لطفاً عکس کارت دانشجویی خود را ارسال کنید.", reply_markup=ReplyKeyboardRemove())
-
 async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("step") == "phone":
         context.user_data["phone"] = update.message.contact.phone_number
         context.user_data["step"] = "student_card"
         await update.message.reply_text("متشکرم. حالا لطفاً عکس کارت دانشجویی خود را ارسال کنید.", reply_markup=ReplyKeyboardRemove())
-
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     step = context.user_data.get("step")
 
@@ -166,27 +156,19 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif step == "payment":
         payment_receipt_id = update.message.photo[-1].file_id
-        # --- این خط اصلاح شد ---
         await update.message.reply_text("""✅ ثبت‌نام شما با موفقیت انجام شد. اطلاعات شما برای بررسی به شورای کانون ارسال گردید. متشکرم!""")
-
-        # --- ارسال اطلاعات به گروه خصوصی ---
         user_info = context.user_data
         selected_class_raw = user_info.get("selected_class", "نامشخص")
         selected_class = selected_class_raw.replace("class_", "").capitalize()
-
         admin_message = (
             f"🔔 **ثبت‌نام جدید برای کلاس: {selected_class}**\n\n"
             f"👤 **نام:** {user_info.get('name', 'N/A')}\n"
             f"🎓 **شماره دانشجویی:** {user_info.get('student_id', 'N/A')}\n"
             f"📱 **شماره تماس:** {user_info.get('phone', 'N/A')}"
         )
-
         try:
-            # ارسال پیام متنی به گروه
             await context.bot.send_message(chat_id=GROUP_CHAT_ID, text=admin_message, parse_mode='Markdown')
-            # ارسال عکس کارت دانشجویی به گروه
             await context.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=user_info.get("student_card_id"), caption="کارت دانشجویی")
-            # ارسال عکس فیش واریزی به گروه
             await context.bot.send_photo(chat_id=GROUP_CHAT_ID, photo=payment_receipt_id, caption="فیش واریزی")
         except Exception as e:
             print(f"Error sending to group: {e}")
@@ -214,6 +196,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# --- این بخش جدید و حیاتی است ---
+@app.post("/")
+async def handle_update(request: Request):
+    """این تابع پیام‌های POST تلگرام را دریافت کرده و به کتابخانه ربات می‌دهد."""
+    body = await request.json()
+    update = Update.de_json(body, application.bot)
+    await application.process_update(update)
+    return {"status": "ok"}
+# ---------------------------------
+
 @app.get("/")
 async def root():
+    """این تابع برای چک کردن سلامت سرور در مرورگر است."""
     return {"status": "FMCBot is running."}
