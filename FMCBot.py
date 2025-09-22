@@ -7,41 +7,51 @@ from telegram.ext import (
     CallbackQueryHandler, MessageHandler, filters
 )
 
-# --- متغیرهای محیطی ---
+# --- بخش تنظیمات ---
+
+# متغیرهای محیطی از Render خوانده می‌شوند
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 
 # شناسه عددی گروه ادمین‌ها
 GROUP_CHAT_ID = -4881825561
 
-# !!! توجه: لینک گروه‌های کلاسی خود را اینجا وارد کنید !!!
+# لینک گوگل شیت برای لیست کلاس‌ها
+SHEET_LINK = "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit?usp=sharing"
+
+# لینک گروه‌های کلاسی
 CLASS_LINKS = {
     "class_piano": "https://t.me/joinchat/YOUR_PIANO_LINK",
     "class_guitar": "https://t.me/joinchat/YOUR_GUITAR_LINK",
-    "class_violin": "https://t.me/joinchat/YOUR_VIOLIN_LINK",
-    "class_tonbak": "https://t.me/joinchat/YOUR_TONBAK_LINK",
-    "class_solfege1": "https://t.me/joinchat/YOUR_SOLFEGE1_LINK",
-    "class_solfege2": "https://t.me/joinchat/YOUR_SOLFEGE2_LINK",
-    "class_vocal": "https://t.me/joinchat/YOUR_VOCAL_LINK",
-    "class_dotar": "https://t.me/joinchat/YOUR_DOTAR_LINK",
-    "class_setar": "https://t.me/joinchat/YOUR_SETAR_LINK",
-    "class_santoor": "https://t.me/joinchat/YOUR_SANTOOR_LINK",
+    # ... بقیه کلاس‌ها
 }
 
-# --- کیبورد دائمی و اصلی (بخش جدید) ---
-main_reply_keyboard = ReplyKeyboardMarkup(
-    [["شروع مجدد 🔄", "لغو عملیات ❌"]],
-    resize_keyboard=True
-)
+# آیدی‌های پشتیبانی
+SUPPORT_IDS = {
+    "piano_sup": ("سرپرست پیانو", "@piano_admin_id"),
+    "guitar_sup": ("سرپرست گیتار", "@guitar_admin_id"),
+    "deputy_sup": ("دبیر کانون", "@deputy_admin_id"),
+    # ... بقیه سرپرست‌ها
+}
 
+# --- ساخت برنامه اصلی ربات ---
 application = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# -- پیام‌ها و دکمه‌ها --
-welcome_text = (
-    "سلام! به ربات کانون موسیقی خوش آمدید 🎶\n"
-    "از طریق دکمه‌های زیر می‌تونید به بخش‌های مختلف دسترسی داشته باشید."
-)
-# ... (بقیه متغیرهای متنی شما بدون تغییر اینجا قرار می‌گیرند) ...
+# -- کیبورد و پیام‌های اصلی --
+main_reply_keyboard = ReplyKeyboardMarkup([["شروع مجدد 🔄", "لغو عملیات ❌"]], resize_keyboard=True)
+welcome_text = "سلام! به ربات کانون موسیقی خوش آمدید 🎶\nاز طریق دکمه‌های زیر می‌تونید به بخش‌های مختلف دسترسی داشته باشید."
+faq_text = """
+**سوالات متداول ❔**
+
+**۱. کلاس‌ها کجا برگزار می‌شوند؟**
+در ساختمان مجتمع کانون‌های فرهنگی هنری دانشگاه.
+
+**۲. اگر غیبت کنیم چه می‌شود؟**
+جلسات جبرانی برای غیبت هنرجو برگزار نخواهد شد.
+
+**۳. آیا امکان بازگشت وجه وجود دارد؟**
+فقط در صورت انصراف پیش از جلسه اول، ۸۰٪ وجه بازگردانده می‌شود. پس از آن بازگشت وجه ممکن نیست.
+"""
 rules_text = (
     "⚠️ضوابط و قوانین شرکت در کلاس:\n\n"
     "هنرجویان عزیز لطفا در مطالعه دقیق و رعایت موارد زیر کوشا باشید\n\n"
@@ -74,90 +84,79 @@ payment_text = (
     "آیدین خلقی"
 )
 
+# --- دکمه‌های شیشه‌ای منوی اصلی (اصلاح شده) ---
 menu_buttons = [
     [InlineKeyboardButton("🎼 ثبت نام کارگاه های موسیقی", callback_data="register")],
     [InlineKeyboardButton("🎹 رزرو تمرین ساز", callback_data="reserve")],
-    [InlineKeyboardButton("📰 اخبار نشست ها", callback_data="news")],
     [InlineKeyboardButton("📖 نشریه ارغنون", callback_data="journal")],
+    [InlineKeyboardButton("📋 لیست کلاس‌ها و وضعیت", callback_data="class_list")],
+    [InlineKeyboardButton("❔ سوالات متداول", callback_data="faq")],
     [InlineKeyboardButton("🛠️ پشتیبانی", callback_data="support")],
 ]
 register_buttons = [
     [InlineKeyboardButton("پیانو", callback_data="class_piano")],
     [InlineKeyboardButton("گیتار", callback_data="class_guitar")],
-    [InlineKeyboardButton("کمانچه و ویولن", callback_data="class_violin")],
-    [InlineKeyboardButton("دف و تنبک", callback_data="class_tonbak")],
-    [InlineKeyboardButton("سلفژ مقدماتی", callback_data="class_solfege1")],
-    [InlineKeyboardButton("سلفژ پیشرفته", callback_data="class_solfege2")],
-    [InlineKeyboardButton("آواز", callback_data="class_vocal")],
-    [InlineKeyboardButton("دوتار", callback_data="class_dotar")],
-    [InlineKeyboardButton("تار و سه‌تار", callback_data="class_setar")],
-    [InlineKeyboardButton("سنتور", callback_data="class_santoor")],
-]
-support_buttons = [
-    [InlineKeyboardButton("سرپرست پیانو", callback_data="sup_piano")],
-    [InlineKeyboardButton("سرپرست گیتار", callback_data="sup_guitar")],
+    # ... بقیه دکمه‌های کلاس‌ها
 ]
 
-# -- متدهای هندل --
+# --- توابع اصلی ربات ---
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # --- اصلاح شده: ارسال کیبورد اصلی ---
-    await update.message.reply_text(
-        welcome_text,
-        reply_markup=main_reply_keyboard  # <-- کیبورد دائمی اضافه شد
-    )
-    # ارسال منوی شیشه‌ای در یک پیام جداگانه
-    await update.message.reply_text(
-        "لطفا یک گزینه را انتخاب کنید:",
-        reply_markup=InlineKeyboardMarkup(menu_buttons)
-    )
+    await update.message.reply_text(welcome_text, reply_markup=main_reply_keyboard)
+    await update.message.reply_text("لطفا یک گزینه را انتخاب کنید:", reply_markup=InlineKeyboardMarkup(menu_buttons))
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
-    # --- اصلاح شده: نمایش کیبورد اصلی پس از لغو ---
-    await update.message.reply_text(
-        "فرآیند ثبت‌نام لغو شد.",
-        reply_markup=main_reply_keyboard # <-- کیبورد دائمی نمایش داده می‌شود
-    )
-    # حذف کیبورد موقتی مثل 'ارسال شماره'
-    await update.message.reply_text("برای شروع مجدد، دکمه مربوطه را بزنید.", reply_markup=ReplyKeyboardRemove())
+    await update.message.reply_text("عملیات لغو شد.", reply_markup=main_reply_keyboard)
     await start(update, context)
-
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
     await query.answer()
 
-    if data.startswith("approve_"):
+    if data.startswith("approve_") or data.startswith("reject_"):
         try:
-            _, student_chat_id, class_name = data.split("_", 2)
+            action, student_chat_id, class_name = data.split("_", 2)
             student_chat_id = int(student_chat_id)
-            group_link = CLASS_LINKS.get(class_name)
+            admin_name = query.from_user.first_name
 
-            if group_link:
-                approval_message = (
-                    "🎉 ثبت‌نام شما در کارگاه موسیقی تایید شد!\n\n"
-                    "لطفاً از طریق لینک زیر وارد گروه کلاس خود شوید:"
-                )
-                await context.bot.send_message(
-                    chat_id=student_chat_id,
-                    text=approval_message,
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ورود به گروه کلاس", url=group_link)]])
-                )
-                admin_first_name = query.from_user.first_name
-                await query.edit_message_reply_markup(
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(f"✅ توسط {admin_first_name} تایید شد", callback_data="approved")]]))
-            else:
-                await query.edit_message_reply_markup(
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⚠️ لینک تعریف نشده", callback_data="link_error")]]))
+            if action == "approve":
+                group_link = CLASS_LINKS.get(class_name)
+                if group_link:
+                    msg = "🎉 ثبت‌نام شما در کارگاه موسیقی تایید شد!\n\nلطفاً از طریق لینک زیر وارد گروه کلاس خود شوید:"
+                    btn = [[InlineKeyboardButton("ورود به گروه کلاس", url=group_link)]]
+                    await context.bot.send_message(chat_id=student_chat_id, text=msg, reply_markup=InlineKeyboardMarkup(btn))
+                    await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(f"✅ توسط {admin_name} تایید شد", callback_data="done")]]))
+                else:
+                    await query.answer("خطا: لینک گروه برای این کلاس تعریف نشده است.", show_alert=True)
+            
+            elif action == "reject":
+                msg = "⚠️ متاسفانه ثبت‌نام شما تایید نشد. لطفاً پس از رفع مشکل، مجدداً اقدام فرمایید یا با پشتیبانی تماس بگیرید."
+                await context.bot.send_message(chat_id=student_chat_id, text=msg)
+                await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(f"❌ توسط {admin_name} رد شد", callback_data="done")]]))
+
         except Exception as e:
-            print(f"Error in approval callback: {e}")
+            print(f"Error in approval/rejection callback: {e}")
             await query.answer("خطایی در پردازش رخ داد.", show_alert=True)
         return
 
     if data == "register":
         await query.edit_message_text("لطفاً یک کارگاه انتخاب کنید:", reply_markup=InlineKeyboardMarkup(register_buttons))
-    # ... (بقیه کدهای این تابع بدون تغییر باقی می‌مانند) ...
+    elif data == "class_list":
+        await query.edit_message_text(
+            "برای مشاهده لیست کلاس‌ها، ظرفیت‌ها و برنامه‌ زمانی، به لینک گوگل شیت زیر مراجعه کنید:",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("مشاهده لیست کلاس‌ها 📋", url=SHEET_LINK)]])
+        )
+    elif data == "faq":
+        await query.edit_message_text(faq_text, parse_mode='Markdown')
+    elif data == "support":
+        support_buttons = [[InlineKeyboardButton(name, callback_data=f"sup_{key}")] for key, (name, _) in SUPPORT_IDS.items()]
+        await query.edit_message_text("پشتیبانی مورد نظر را انتخاب کنید:", reply_markup=InlineKeyboardMarkup(support_buttons))
+    elif data.startswith("sup_"):
+        key = data.split("_", 1)[1]
+        _, admin_id = SUPPORT_IDS.get(key, ("نامشخص", "یافت نشد"))
+        await query.edit_message_text(f"آیدی پشتیبان: {admin_id}")
     elif data.startswith("class_"):
         context.user_data["selected_class"] = data
         await query.edit_message_text(rules_text, reply_markup=InlineKeyboardMarkup([
@@ -180,11 +179,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ... (این تابع بدون تغییر باقی می‌ماند) ...
     user_data = context.user_data
     step = user_data.get("step")
     text = update.message.text
-
     if step == "name":
         if all('\u0600' <= c <= '\u06FF' or c.isspace() for c in text):
             user_data["name"] = text
@@ -208,7 +205,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_data["step"] = "student_card"
         await update.message.reply_text("لطفاً عکس کارت دانشجویی خود را ارسال کنید.", reply_markup=ReplyKeyboardRemove())
 
-
 async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("step") == "phone":
         context.user_data["phone"] = update.message.contact.phone_number
@@ -216,14 +212,11 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("متشکرم. حالا لطفاً عکس کارت دانشجویی خود را ارسال کنید.", reply_markup=ReplyKeyboardRemove())
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ... (این تابع تقریباً بدون تغییر باقی می‌ماند) ...
     step = context.user_data.get("step")
-
     if step == "student_card":
         context.user_data["student_card_id"] = update.message.photo[-1].file_id
         context.user_data["step"] = "payment"
         await update.message.reply_text(payment_text)
-
     elif step == "payment":
         payment_receipt_id = update.message.photo[-1].file_id
         await update.message.reply_text("""✅ ثبت‌نام شما با موفقیت انجام شد. اطلاعات شما برای بررسی به شورای کانون ارسال گردید. متشکرم!""", reply_markup=main_reply_keyboard)
@@ -236,11 +229,17 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🔔 **ثبت‌نام جدید برای کلاس: {selected_class.replace('class_', '').capitalize()}**\n\n"
             f"👤 **نام:** {user_info.get('name', 'N/A')}\n"
             f"🎓 **شماره دانشجویی:** {user_info.get('student_id', 'N/A')}\n"
-            f"📱 **شماره تماس:** {user_info.get('phone', 'N/A')}"
+            f"📱 **شماره تماس:** {user_info.get('phone', 'N/A')}\n"
         )
         
-        callback_data = f"approve_{user_chat_id}_{selected_class}"
-        approval_button = InlineKeyboardMarkup([[InlineKeyboardButton("✅ تایید ثبت‌نام", callback_data=callback_data)]])
+        callback_approve = f"approve_{user_chat_id}_{selected_class}"
+        callback_reject = f"reject_{user_chat_id}_{selected_class}"
+        approval_buttons = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("✅ تایید", callback_data=callback_approve),
+                InlineKeyboardButton("❌ رد", callback_data=callback_reject)
+            ]
+        ])
         
         media_group = [
             InputMediaPhoto(media=user_info.get("student_card_id"), caption=caption, parse_mode='Markdown'),
@@ -248,32 +247,27 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         
         try:
-            message_in_admin_group = await context.bot.send_media_group(chat_id=GROUP_CHAT_ID, media=media_group)
+            admin_messages = await context.bot.send_media_group(chat_id=GROUP_CHAT_ID, media=media_group)
             await context.bot.send_message(
                 chat_id=GROUP_CHAT_ID, 
                 text="لطفا ثبت‌نام بالا را تایید یا رد کنید:", 
-                reply_to_message_id=message_in_admin_group[0].message_id, 
-                reply_markup=approval_button
+                reply_to_message_id=admin_messages[0].message_id, 
+                reply_markup=approval_buttons
             )
         except Exception as e:
             print(f"Error sending media group: {e}")
 
         context.user_data.clear()
 
-
 # -- ثبت هندلرها --
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CommandHandler("cancel", cancel))
-
-# --- هندلرهای جدید برای دکمه‌های دائمی ---
 application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^شروع مجدد 🔄$"), start))
 application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^لغو عملیات ❌$"), cancel))
-
 application.add_handler(CallbackQueryHandler(handle_callback))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^شروع مجدد 🔄$") & ~filters.Regex("^لغو عملیات ❌$"), handle_message))
 application.add_handler(MessageHandler(filters.CONTACT, handle_contact))
-application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-
+application.add_handler(MessageHandler(filters.PHOTO & ~filters.COMMAND, handle_photo))
 
 # -- FastAPI با Lifespan --
 @asynccontextmanager
